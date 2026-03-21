@@ -19,6 +19,13 @@ public class InventoryService {
     public List<InventoryResponse> isInStock(List<String> skuCode) {
         // In a real application, this would check the database or an external service
         // For simplicity, we'll assume all products are in stock
+        System.out.println(inventoryRepository.findBySkuCodeIn(skuCode)
+                .stream()
+                .map(inventory ->
+                        InventoryResponse.builder()
+                                .skuCode(inventory.getSkuCode())
+                                .isInStock(inventory.getQuantity() > 0)
+                                .build()).toList());
         return inventoryRepository.findBySkuCodeIn(skuCode)
                 .stream()
                 .map(inventory ->

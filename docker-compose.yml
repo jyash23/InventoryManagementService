@@ -23,7 +23,7 @@ services:
       context: ./product-service
     container_name: product-service
     ports:
-      - "8080:8080"
+      - "8082:8080"
     environment:
       SERVER_PORT: 8080
       SPRING_MONGODB_URI: mongodb://mongodb:27017/product-service
@@ -31,6 +31,19 @@ services:
     depends_on:
       - mongodb
       - discovery-server
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: inventorymanagement-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      SERVER_PORT: 8080
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      - discovery-server
+      - product-service
 
 volumes:
   mongodb_data:

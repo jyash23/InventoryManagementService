@@ -9,20 +9,25 @@ spring:
     gateway:
       routes:
         - id: product-service-route
-          uri: lb://product-service   # ? Eureka LB
+          uri: http://product-service:8080
           predicates:
-            - Path=/api/product/**    # ? SAME as backend
-          # ? No StripPrefix
-
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true
+            - Path=/api/product/**
+        - id: order-service-route
+          uri: http://order-service:8080
+          predicates:
+            - Path=/api/order/**
 
 eureka:
   client:
     service-url:
       defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka}
+
+app:
+  auth:
+    username: ${APP_AUTH_USERNAME:admin}
+    password: ${APP_AUTH_PASSWORD:password}
+    secret: ${APP_AUTH_SECRET:change-this-secret-key-change-this-secret-key}
+    expiration-ms: ${APP_AUTH_EXPIRATION_MS:3600000}
 
 logging:
   level:

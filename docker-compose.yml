@@ -7,6 +7,38 @@ services:
     volumes:
       - mongodb_data:/data/db
 
+  mysql-inventory:
+    image: mysql:8.4
+    container_name: inventorymanagement-mysql-inventory
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: inventory_service
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_inventory_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mysql-order:
+    image: mysql:8.4
+    container_name: inventorymanagement-mysql-order
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: order_service
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_order_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   discovery-server:
     build:
       context: ./discovery-server
@@ -17,6 +49,25 @@ services:
       SERVER_PORT: 8761
     depends_on:
       - mongodb
+
+  inventory-service:
+    build:
+      context: ./inventory-service
+    container_name: inventorymanagement-inventory-service
+    ports:
+      - "8083:8080"
+    environment:
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-inventory:3306/inventory_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_JPA_HIBERNATE_DDL_AUTO: create-drop
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      discovery-server:
+        condition: service_started
+      mysql-inventory:
+        condition: service_healthy
 
   product-service:
     build:
@@ -32,6 +83,27 @@ services:
       - mongodb
       - discovery-server
 
+  order-service:
+    build:
+      context: ./order-service
+    container_name: inventorymanagement-order-service
+    ports:
+      - "8084:8080"
+    environment:
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-order:3306/order_service
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      discovery-server:
+        condition: service_started
+      mysql-order:
+        condition: service_healthy
+      inventory-service:
+        condition: service_started
+
   api-gateway:
     build:
       context: ./api-gateway
@@ -41,9 +113,16 @@ services:
     environment:
       SERVER_PORT: 8080
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      APP_AUTH_USERNAME: admin
+      APP_AUTH_PASSWORD: password
+      APP_AUTH_SECRET: change-this-secret-key-change-this-secret-key
+      APP_AUTH_EXPIRATION_MS: 3600000
     depends_on:
       - discovery-server
       - product-service
+      - order-service
 
 volumes:
   mongodb_data:
+  mysql_inventory_data:
+  mysql_order_data:

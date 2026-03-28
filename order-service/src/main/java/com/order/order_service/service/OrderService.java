@@ -4,6 +4,7 @@ package com.order.order_service.service;
 import com.order.order_service.dto.InventoryResponse;
 import com.order.order_service.dto.OrderLineItemsDto;
 import com.order.order_service.dto.OrderRequest;
+import com.order.order_service.exception.ProductOutOfStockException;
 import com.order.order_service.model.Order;
 import com.order.order_service.model.OrderLineItems;
 import com.order.order_service.repository.OrderRepository;
@@ -49,7 +50,7 @@ public class OrderService {
         if(allProductsInStock) {
             orderRepository.save(order);
         }else {
-            throw new IllegalArgumentException("Product is not in stock, please try again later");
+            throw new ProductOutOfStockException("Product is not in stock, please try again later");
         }
     }
 

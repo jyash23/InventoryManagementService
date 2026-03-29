@@ -1,4 +1,7 @@
 services:
+  kafka:
+    ports: []
+
   mongodb:
     ports: []
 
@@ -18,6 +21,9 @@ services:
     ports: []
 
   order-service:
+    ports: []
+
+  notification-service:
     ports: []
 
   api-gateway:

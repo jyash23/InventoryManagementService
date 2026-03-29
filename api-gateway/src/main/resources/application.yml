@@ -16,6 +16,10 @@ spring:
           uri: http://order-service:8080
           predicates:
             - Path=/api/order/**
+        - id: notification-service-route
+          uri: http://notification-service:8080
+          predicates:
+            - Path=/api/notification/**
 
 eureka:
   client:

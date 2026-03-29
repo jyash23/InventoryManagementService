@@ -2,6 +2,8 @@ package com.order.order_service.service;
 
 
 import com.order.order_service.dto.InventoryResponse;
+import com.order.order_service.dto.OrderItemEvent;
+import com.order.order_service.dto.OrderPlacedEvent;
 import com.order.order_service.dto.OrderLineItemsDto;
 import com.order.order_service.dto.OrderRequest;
 import com.order.order_service.exception.ProductOutOfStockException;
@@ -16,6 +18,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.time.Instant;
 
 @Service
 @Transactional
@@ -25,6 +28,7 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final WebClient.Builder webClientBuilder;
+    private final OrderEventPublisher orderEventPublisher;
 
     public void placeOrder(OrderRequest orderRequest) {
         Order order = new Order();
@@ -49,6 +53,7 @@ public class OrderService {
 
         if(allProductsInStock) {
             orderRepository.save(order);
+            orderEventPublisher.publish(buildOrderPlacedEvent(order));
         }else {
             throw new ProductOutOfStockException("Product is not in stock, please try again later");
         }
@@ -60,5 +65,24 @@ public class OrderService {
         orderLineItems.setQuantity(orderLineItemsDto.getQuantity());
         orderLineItems.setSkuCode(orderLineItemsDto.getSkuCode());
         return orderLineItems;
+    }
+
+    private OrderPlacedEvent buildOrderPlacedEvent(Order order) {
+        List<OrderItemEvent> items = order.getOrderLineItemsList().stream()
+                .map(item -> new OrderItemEvent(
+                        item.getSkuCode(),
+                        item.getQuantity(),
+                        item.getPrice()
+                ))
+                .toList();
+
+        return new OrderPlacedEvent(
+                order.getOrderNumber(),
+                items,
+                items.stream()
+                        .map(OrderItemEvent::price)
+                        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add),
+                Instant.now()
+        );
     }
 }

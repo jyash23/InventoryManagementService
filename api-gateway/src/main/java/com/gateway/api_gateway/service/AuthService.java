@@ -18,7 +18,7 @@ public class AuthService {
     public AuthResponse login(AuthRequest authRequest) {
         if (!authProperties.username().equals(authRequest.username())
                 || !authProperties.password().equals(authRequest.password())) {
-            throw new InvalidCredentialsException("Invalid username or password");
+            throw new InvalidCredentialsException("Invalid username or password.");
         }
 
         return new AuthResponse(

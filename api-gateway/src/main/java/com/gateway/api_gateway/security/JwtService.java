@@ -24,7 +24,6 @@ public class JwtService {
 
     public String generateToken(String username) {
         Instant now = Instant.now();
-
         return Jwts.builder()
                 .subject(username)
                 .issuedAt(Date.from(now))

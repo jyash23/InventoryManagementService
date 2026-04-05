@@ -18,17 +18,23 @@ public class InventoryServiceApplication {
 	@Bean
 	public CommandLineRunner loadData(InventoryRepository inventoryRepository) {
 		return args -> {
-			Inventory inventory1 = new Inventory();
-			inventory1.setSkuCode("iphone_13");
-			inventory1.setQuantity(100);
-
-			Inventory inventory2 = new Inventory();
-			inventory2.setSkuCode("iphone_13_red");
-			inventory2.setQuantity(0);
-
-			inventoryRepository.save(inventory1);
-			inventoryRepository.save(inventory2);
+			saveIfMissing(inventoryRepository, "iphone_13", 100);
+			saveIfMissing(inventoryRepository, "iphone_13_red", 5);
+			saveIfMissing(inventoryRepository, "airpods_pro", 50);
+			saveIfMissing(inventoryRepository, "macbook_pro", 20);
 		};
+	}
+
+	private void saveIfMissing(InventoryRepository inventoryRepository, String skuCode, int quantity) {
+		inventoryRepository.findBySkuCode(skuCode).ifPresentOrElse(
+				inventory -> { },
+				() -> {
+					Inventory inventory = new Inventory();
+					inventory.setSkuCode(skuCode);
+					inventory.setQuantity(quantity);
+					inventoryRepository.save(inventory);
+				}
+		);
 	}
 
 }

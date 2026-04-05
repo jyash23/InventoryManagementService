@@ -1,7 +1,7 @@
 package com.order.order_service.service;
 
-
-import com.order.order_service.dto.InventoryResponse;
+import com.order.order_service.dto.InventoryReservationRequest;
+import com.order.order_service.dto.InventoryReservationResponse;
 import com.order.order_service.dto.OrderItemEvent;
 import com.order.order_service.dto.OrderPlacedEvent;
 import com.order.order_service.dto.OrderLineItemsDto;
@@ -13,9 +13,7 @@ import com.order.order_service.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.time.Instant;
@@ -27,7 +25,7 @@ public class OrderService {
 
 
     private final OrderRepository orderRepository;
-    private final WebClient.Builder webClientBuilder;
+    private final InventoryGrpcClient inventoryGrpcClient;
     private final OrderEventPublisher orderEventPublisher;
 
     public void placeOrder(OrderRequest orderRequest) {
@@ -39,23 +37,22 @@ public class OrderService {
                 .map(this::mapToDto)
                 .toList();
         order.setOrderLineItemsList(orderLineItemsList);
-        List<String> skuCodes=order.getOrderLineItemsList().stream()
-                .map(OrderLineItems::getSkuCode).toList();
-        InventoryResponse[] inventoryResponses=webClientBuilder.build().get()
-                .uri("http://inventory-service/api/inventory",uriBuilder -> uriBuilder.queryParam("skuCode",skuCodes).build())
-                .retrieve()
-                .bodyToMono(InventoryResponse[].class)
-                .block();
+        List<InventoryReservationRequest> reservationRequests = order.getOrderLineItemsList().stream()
+                .map(item -> new InventoryReservationRequest(item.getSkuCode(), item.getQuantity()))
+                .toList();
 
-        boolean allProductsInStock = Arrays.stream(inventoryResponses)
-                .allMatch(res -> Boolean.TRUE.equals(res.getIsInStock()));
+        InventoryReservationResponse inventoryReservationResponse =
+                inventoryGrpcClient.reserveInventory(reservationRequests);
 
-
-        if(allProductsInStock) {
+        if(inventoryReservationResponse != null && inventoryReservationResponse.reserved()) {
             orderRepository.save(order);
             orderEventPublisher.publish(buildOrderPlacedEvent(order));
         }else {
-            throw new ProductOutOfStockException("Product is not in stock, please try again later");
+            throw new ProductOutOfStockException(
+                    inventoryReservationResponse != null
+                            ? inventoryReservationResponse.message()
+                            : "Product is not in stock, please try again later"
+            );
         }
     }
 
